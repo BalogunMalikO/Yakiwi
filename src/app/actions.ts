@@ -1,7 +1,7 @@
 "use server";
 
-import { answerQuestionFromDocs } from "@/ai/flows/answer-question-from-docs";
-import type { AnswerQuestionFromDocsOutput } from "@/ai/flows/answer-question-from-docs";
+import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
+import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
 
 const YAKIHONNE_API_DOCS = `
 # YakiHonne Software API v2.0 - Comprehensive Documentation
@@ -204,14 +204,14 @@ Webhooks allow you to receive real-time notifications about events happening in 
 To verify webhook authenticity, we include a \`YakiHonne-Signature\` header in each request. You can find instructions on how to verify this signature in your dashboard.
 `;
 
-export async function askQuestionAction(question: string): Promise<AnswerQuestionFromDocsOutput & { error?: string }> {
+export async function askQuestionAction(question: string): Promise<DeveloperResponseOutput & { error?: string }> {
   try {
     if (!question) {
-      return { error: "Question cannot be empty.", answer: "", citation: "" };
+      return { error: "Question cannot be empty.", answer: "", codeSnippet: null, citation: null };
     }
 
-    const result = await answerQuestionFromDocs({
-      question,
+    const result = await generateDeveloperResponse({
+      query: question,
       documentation: YAKIHONNE_API_DOCS,
     });
     
@@ -221,14 +221,16 @@ export async function askQuestionAction(question: string): Promise<AnswerQuestio
     // This is a common error from Genkit when the model refuses to answer.
     if (e.message?.includes('The model refused to respond to the prompt')) {
         return {
-            answer: "I am unable to answer this question based on the provided documentation. Please try rephrasing your question or ask about a different topic.",
-            citation: "No citation available.",
+            answer: "I am unable to provide a response for this request. Please try rephrasing your query or ask about a different topic related to the YakiHonne API.",
+            codeSnippet: null,
+            citation: null,
         };
     }
     return {
       error: e.message || "An unexpected error occurred. Please try again.",
       answer: "",
-      citation: "",
+      codeSnippet: null,
+      citation: null,
     };
   }
 }

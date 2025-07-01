@@ -20,7 +20,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { askQuestionAction } from "@/app/actions";
-import type { AnswerQuestionFromDocsOutput } from "@/ai/flows/answer-question-from-docs";
+import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
 import { NostrIcon } from "@/components/icons/nostr-icon";
 
 declare global {
@@ -52,7 +52,7 @@ const FormSchema = z.object({
 });
 
 export function QAPanel() {
-  const [response, setResponse] = React.useState<AnswerQuestionFromDocsOutput | null>(null);
+  const [response, setResponse] = React.useState<DeveloperResponseOutput | null>(null);
   const [isPending, startTransition] = React.useTransition();
   const [nostrPending, setNostrPending] = React.useState(false);
   const { toast } = useToast();
@@ -79,7 +79,14 @@ export function QAPanel() {
 
     try {
       const relays = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
-      const content = `Q: ${form.getValues("question")}\n\nA: ${response.answer}`;
+      
+      let content = `Q: ${form.getValues("question")}\n\nA: ${response.answer}`;
+      if (response.codeSnippet) {
+        content += `\n\n\`\`\`\n${response.codeSnippet}\n\`\`\``;
+      }
+      if (response.citation) {
+        content += `\n\nCitation: ${response.citation}`;
+      }
       
       const eventTemplate = {
         kind: 1,
@@ -149,7 +156,7 @@ export function QAPanel() {
                   <FormItem>
                     <FormControl>
                       <Textarea
-                        placeholder="e.g., How do I authenticate my API requests?"
+                        placeholder="e.g., How do I authenticate? or, Show me how to build a music player..."
                         className="resize-none border-0 p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         rows={3}
                         {...field}
@@ -168,7 +175,7 @@ export function QAPanel() {
                     </>
                   ) : (
                     <>
-                      Ask Question
+                      Ask
                       <Send className="ml-2 h-4 w-4" />
                     </>
                   )}
@@ -204,9 +211,17 @@ export function QAPanel() {
           </CardHeader>
           <CardContent>
             <p className="leading-relaxed whitespace-pre-wrap">{response.answer}</p>
+            {response.codeSnippet && (
+              <div className="mt-6">
+                <h4 className="font-semibold text-lg mb-2">Example Code</h4>
+                <div className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+                  <pre><code className="font-code">{response.codeSnippet}</code></pre>
+                </div>
+              </div>
+            )}
           </CardContent>
           <CardFooter>
-            <div className="w-full flex items-end">
+            <div className="w-full flex flex-col sm:flex-row sm:items-end gap-4">
               {response.citation && (
                 <div className="flex-1">
                   <p className="text-sm font-medium text-muted-foreground mb-2">Citation</p>
@@ -220,7 +235,7 @@ export function QAPanel() {
                 variant="outline"
                 size="sm"
                 onClick={handleShareOnNostr}
-                className={!response.citation ? "ml-auto" : ""}
+                className="sm:ml-auto"
                 disabled={nostrPending}
               >
                 {nostrPending ? (

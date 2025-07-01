@@ -1,53 +1,61 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for generating example code snippets for the Yakihonne API.
+ * @fileOverview This file defines a Genkit flow for generating a comprehensive developer response,
+ * which can include answers to questions, code examples, and citations from documentation.
  *
- * The flow takes a scenario description as input and returns an example code snippet.
- * - generateExampleCode - A function that generates example code snippets.
- * - GenerateExampleCodeInput - The input type for the generateExampleCode function.
- * - GenerateExampleCodeOutput - The return type for the generateExampleCode function.
+ * - generateDeveloperResponse - A function that can answer questions and generate code.
+ * - DeveloperResponseInput - The input type for the function.
+ * - DeveloperResponseOutput - The return type for the function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const GenerateExampleCodeInputSchema = z.object({
-  scenario: z
-    .string()
-    .describe(
-      'A description of the scenario for which to generate an example code snippet for the Yakihonne API.'
-    ),
+const DeveloperResponseInputSchema = z.object({
+  query: z.string().describe('The user query, which can be a question or a request to build something.'),
+  documentation: z.string().describe('The full API documentation for context.'),
 });
-export type GenerateExampleCodeInput = z.infer<typeof GenerateExampleCodeInputSchema>;
+export type DeveloperResponseInput = z.infer<typeof DeveloperResponseInputSchema>;
 
-const GenerateExampleCodeOutputSchema = z.object({
-  codeSnippet: z.string().describe('The generated example code snippet.'),
+const DeveloperResponseOutputSchema = z.object({
+  answer: z.string().describe("The textual answer or explanation for the user's query."),
+  codeSnippet: z.string().nullable().describe('An optional code snippet if the user asked for an example or how to build something.'),
+  citation: z.string().nullable().describe('An optional citation from the documentation if the user asked a factual question.'),
 });
-export type GenerateExampleCodeOutput = z.infer<typeof GenerateExampleCodeOutputSchema>;
+export type DeveloperResponseOutput = z.infer<typeof DeveloperResponseOutputSchema>;
 
-export async function generateExampleCode(
-  input: GenerateExampleCodeInput
-): Promise<GenerateExampleCodeOutput> {
-  return generateExampleCodeFlow(input);
+export async function generateDeveloperResponse(
+  input: DeveloperResponseInput
+): Promise<DeveloperResponseOutput> {
+  return generateDeveloperResponseFlow(input);
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateExampleCodePrompt',
-  input: {schema: GenerateExampleCodeInputSchema},
-  output: {schema: GenerateExampleCodeOutputSchema},
-  prompt: `You are an expert software developer specializing in the Yakihonne API.
+  name: 'generateDeveloperResponsePrompt',
+  input: {schema: DeveloperResponseInputSchema},
+  output: {schema: DeveloperResponseOutputSchema},
+  prompt: `You are an expert software developer and AI assistant specializing in the YakiHonne API and its integration with technologies like Nostr.
 
-You will generate an example code snippet based on the following scenario. The code snippet should be complete and ready to run.
+Your task is to provide a comprehensive response to the user's query. You have access to the full YakiHonne API documentation.
 
-Scenario: {{{scenario}}}`,
+1.  **If the user asks a factual question** about the API (e.g., "How do I authenticate?"), provide a clear and concise answer based on the documentation in the 'answer' field. If possible, cite the specific section of the documentation in the 'citation' field. Set the 'codeSnippet' field to null.
+
+2.  **If the user asks for a code example or how to build something** (e.g., "Show me how to create a widget," or "I want to build a music player on Nostr using YakiHonne"), provide a step-by-step explanation in the 'answer' field and a relevant, complete code snippet in the 'codeSnippet' field to help them get started. Explain how YakiHonne APIs can be used for the task. Set the 'citation' field to null.
+
+Always provide a helpful and encouraging response.
+
+User Query: {{{query}}}
+
+Full API Documentation for context:
+{{{documentation}}}`,
 });
 
-const generateExampleCodeFlow = ai.defineFlow(
+const generateDeveloperResponseFlow = ai.defineFlow(
   {
-    name: 'generateExampleCodeFlow',
-    inputSchema: GenerateExampleCodeInputSchema,
-    outputSchema: GenerateExampleCodeOutputSchema,
+    name: 'generateDeveloperResponseFlow',
+    inputSchema: DeveloperResponseInputSchema,
+    outputSchema: DeveloperResponseOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
