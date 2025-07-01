@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, Quote, Send, Sparkles } from "lucide-react";
+import { SimplePool } from "nostr-tools";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { askQuestionAction } from "@/app/actions";
 import type { AnswerQuestionFromDocsOutput } from "@/ai/flows/answer-question-from-docs";
+import { NostrIcon } from "@/components/icons/nostr-icon";
+
+declare global {
+  interface Window {
+    nostr?: {
+      getPublicKey(): Promise<string>;
+      signEvent(event: {
+        kind: number;
+        created_at: number;
+        tags: string[][];
+        content: string;
+      }): Promise<{
+        id: string;
+        sig: string;
+        kind: number;
+        created_at: number;
+        tags: string[][];
+        content: string;
+        pubkey: string;
+      }>;
+    };
+  }
+}
 
 const FormSchema = z.object({
   question: z.string().min(10, {
@@ -30,6 +54,7 @@ const FormSchema = z.object({
 export function QAPanel() {
   const [response, setResponse] = React.useState<AnswerQuestionFromDocsOutput | null>(null);
   const [isPending, startTransition] = React.useTransition();
+  const [nostrPending, setNostrPending] = React.useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -38,6 +63,61 @@ export function QAPanel() {
       question: "",
     },
   });
+
+  const handleShareOnNostr = async () => {
+    if (!response) return;
+    if (!window.nostr) {
+      toast({
+        variant: "destructive",
+        title: "Nostr extension not found",
+        description: "Please install a Nostr browser extension like Alby or nos2x.",
+      });
+      return;
+    }
+
+    setNostrPending(true);
+
+    try {
+      const relays = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
+      const content = `Q: ${form.getValues("question")}\n\nA: ${response.answer}`;
+      
+      const eventTemplate = {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [],
+        content: content,
+      };
+
+      const signedEvent = await window.nostr.signEvent(eventTemplate);
+
+      const pool = new SimplePool();
+      let pubs = pool.publish(relays, signedEvent);
+
+      await Promise.any(pubs.map(p => new Promise(r => p.on('ok', r))));
+
+      pool.close(relays);
+
+      toast({
+        title: "Successfully shared on Nostr!",
+        description: "Your Q&A has been published.",
+      });
+    } catch (e: any) {
+      console.error("Nostr sharing failed", e);
+      let errorMessage = "An unknown error occurred.";
+      if (e instanceof AggregateError) {
+        errorMessage = "Failed to publish to any relay.";
+      } else if (e.message) {
+        errorMessage = e.message;
+      }
+      toast({
+        variant: "destructive",
+        title: "Failed to share on Nostr",
+        description: errorMessage,
+      });
+    } finally {
+      setNostrPending(false);
+    }
+  };
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     setResponse(null);
@@ -125,17 +205,38 @@ export function QAPanel() {
           <CardContent>
             <p className="leading-relaxed whitespace-pre-wrap">{response.answer}</p>
           </CardContent>
-          {response.citation && (
-             <CardFooter>
-                <div className="w-full">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Citation</p>
-                    <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground">
-                        <Quote className="h-4 w-4 inline-block mr-2 -mt-1" />
-                        {response.citation}
-                    </blockquote>
+          <CardFooter>
+            <div className="w-full flex items-end">
+              {response.citation && (
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Citation</p>
+                  <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground">
+                    <Quote className="h-4 w-4 inline-block mr-2 -mt-1" />
+                    {response.citation}
+                  </blockquote>
                 </div>
-            </CardFooter>
-          )}
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShareOnNostr}
+                className={!response.citation ? "ml-auto" : ""}
+                disabled={nostrPending}
+              >
+                {nostrPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sharing...
+                  </>
+                ) : (
+                  <>
+                    <NostrIcon className="h-4 w-4 mr-2" />
+                    Share on Nostr
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
       )}
     </div>
