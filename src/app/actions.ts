@@ -5,13 +5,13 @@ import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
 
 // Function to get the base URL of the deployed application.
 const getBaseUrl = () => {
-    // Vercel-specific environment variable.
-    if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`;
-    }
     // Firebase App Hosting-specific environment variable.
     if (process.env.APP_HOST) {
         return `https://${process.env.APP_HOST}`;
+    }
+    // Vercel-specific environment variable.
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
     }
     // Default to localhost for local development.
     return 'http://localhost:9002';
