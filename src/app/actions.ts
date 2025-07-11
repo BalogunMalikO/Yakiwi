@@ -2,33 +2,10 @@
 
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
-import { promises as fs } from 'fs';
-import path from 'path';
-
-// Function to get the base URL of the deployed application.
-const getBaseUrl = () => {
-    // Vercel-specific environment variable.
-    if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`;
-    }
-    // Render-compatible environment variable (and other platforms)
-    if (process.env.NEXT_PUBLIC_BASE_URL) {
-        return process.env.NEXT_PUBLIC_BASE_URL;
-    }
-    // Firebase App Hosting-specific environment variable.
-    if (process.env.APP_HOST) {
-        return `https://${process.env.APP_HOST}`;
-    }
-    // Default to localhost for local development.
-    return 'http://localhost:9002';
-};
 
 // Function to fetch the documentation. It's cached for performance.
 const getDocs = async () => {
-    const baseUrl = getBaseUrl();
-    // Use a unique query parameter to avoid stale cache issues.
-    const url = `${baseUrl}/yakihonne-docs.md?v=${Date.now()}`;
-    
+    const url = "https://yakihonne.com/docs/sw/action-tool-widgets";
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to fetch documentation from ${url}`);
