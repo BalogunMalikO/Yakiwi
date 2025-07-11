@@ -2,15 +2,28 @@
 
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
+import fs from 'fs/promises';
+import path from 'path';
 
 // Function to fetch the documentation. It's cached for performance.
 const getDocs = async () => {
+<<<<<<< HEAD
     const url = "https://yakihonne.com/docs/sw/action-tool-widgets";
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to fetch documentation from ${url}`);
+=======
+    // In production, fetch from the public URL.
+    // Use a unique query parameter to avoid stale cache issues.
+    const docPath = path.join(process.cwd(), 'src/data', 'yakihonne-docs.md');
+    try {
+        const data = await fs.readFile(docPath, 'utf-8');
+        return data;
+    } catch (error) {
+        console.error('Error reading documentation file:', error);
+        throw new Error('Failed to fetch documentation.');
+>>>>>>> ff0280f (Can't we access the doc directly? instead of adding a base url?)
     }
-    return response.text();
 };
 
 
