@@ -8,7 +8,7 @@ export default function Home() {
         <header className="mb-8 text-center">
           <h1 className="flex items-center justify-center gap-2 text-4xl font-bold text-foreground sm:text-5xl font-headline">
             <Sparkles className="h-8 w-8 text-accent" />
-            MiniKiwi
+            YaKiwi
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
             Your friendly AI assistant for the Yakihonne API
