@@ -3,11 +3,26 @@
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
 
+// Function to get the base URL of the deployed application.
+const getBaseUrl = () => {
+    // Vercel-specific environment variable.
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+    }
+    // Firebase App Hosting-specific environment variable.
+    if (process.env.APP_HOST) {
+        return `https://${process.env.APP_HOST}`;
+    }
+    // Default to localhost for local development.
+    return 'http://localhost:9002';
+};
+
 // Function to fetch the documentation. It's cached for performance.
 const getDocs = async () => {
-    // In production, fetch from the public URL.
+    const baseUrl = getBaseUrl();
     // Use a unique query parameter to avoid stale cache issues.
-    const url = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:9002'}/yakihonne-docs.md?v=${Date.now()}`;
+    const url = `${baseUrl}/yakihonne-docs.md?v=${Date.now()}`;
+    
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to fetch documentation from ${url}`);
