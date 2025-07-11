@@ -5,6 +5,10 @@ import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
 
 // Function to get the base URL of the deployed application.
 const getBaseUrl = () => {
+    // Render-compatible environment variable (and other platforms)
+    if (process.env.NEXT_PUBLIC_BASE_URL) {
+        return process.env.NEXT_PUBLIC_BASE_URL;
+    }
     // Firebase App Hosting-specific environment variable.
     if (process.env.APP_HOST) {
         return `https://${process.env.APP_HOST}`;
