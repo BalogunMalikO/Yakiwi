@@ -58,7 +58,7 @@ Example:
 import SWhandler from "smart-widget-handler";
 import { useState, useEffect } from "react";
 
-function ToolApp() {
+function ToolApp() {.
   const [userMetadata, setUserMetadata] = useState(null);
   const [hostOrigin, setHostOrigin] = useState(null);
   
