@@ -2,20 +2,27 @@
 
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
-import fs from "fs";
-import path from "path";
 
-// Read the documentation from the dedicated markdown file.
-const YAKIHONNE_API_DOCS = fs.readFileSync(
-  path.join(process.cwd(), "src/data/yakihonne-docs.md"),
-  "utf-8"
-);
+// Function to fetch the documentation. It's cached for performance.
+const getDocs = async () => {
+    // In production, fetch from the public URL.
+    // Use a unique query parameter to avoid stale cache issues.
+    const url = `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:9002'}/yakihonne-docs.md?v=${Date.now()}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch documentation from ${url}`);
+    }
+    return response.text();
+};
+
 
 export async function askQuestionAction(question: string): Promise<DeveloperResponseOutput & { error?: string }> {
   try {
     if (!question) {
       return { error: "Question cannot be empty.", answer: "", codeSnippet: null, citation: null };
     }
+    
+    const YAKIHONNE_API_DOCS = await getDocs();
 
     const result = await generateDeveloperResponse({
       query: question,
