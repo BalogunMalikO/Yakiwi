@@ -51,7 +51,12 @@ const FormSchema = z.object({
   }),
 });
 
-export function QAPanel() {
+interface QAPanelProps {
+  initialQuestion?: string;
+  onApiResponse?: (response: DeveloperResponseOutput) => void;
+}
+
+export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
   const [response, setResponse] = React.useState<DeveloperResponseOutput | null>(null);
   const [isPending, startTransition] = React.useTransition();
   const [nostrPending, setNostrPending] = React.useState(false);
@@ -60,10 +65,18 @@ export function QAPanel() {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      question: "",
+      question: initialQuestion || "",
     },
   });
 
+  React.useEffect(() => {
+    if (initialQuestion) {
+      form.setValue("question", initialQuestion);
+      // Automatically submit the form if there's an initial question
+      onSubmit({ question: initialQuestion });
+    }
+  }, [initialQuestion]);
+  
   const handleShareOnNostr = async () => {
     if (!response) return;
     if (!window.nostr) {
@@ -126,7 +139,7 @@ export function QAPanel() {
     }
   };
 
-  function onSubmit(data: z.infer<typeof FormSchema>) {
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
     setResponse(null);
     startTransition(async () => {
       const result = await askQuestionAction(data.question);
@@ -139,6 +152,7 @@ export function QAPanel() {
         setResponse(null);
       } else {
         setResponse(result);
+        onApiResponse?.(result);
       }
     });
   }
