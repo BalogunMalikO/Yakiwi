@@ -1,184 +1,138 @@
-# Dynamic Basic Smart Widget Boiler Plate
-A boiler plate to start building dynamic nostr smart widgets
+# YakiHonne Smart Widget Development
 
-## Installation
-```bash
-npm install
-npm run dev
-```
+This documentation provides guidelines for building and integrating Smart Widgets with the YakiHonne platform.
 
-## Dependencies
-- axios
-- canvas
-- cors
-- express
-- nostr-tools
-- puppeteer
-- smart-widget-builder
-- ws
+## Dynamic Smart Widgets (Using Endpoints)
 
-## example
-This is an example of a smart widget starting point that sends back a nostr event of a valid signed smart widget
+Dynamic Smart Widgets are rendered from an endpoint URL. The widget's content and behavior are determined by the response from this endpoint.
+
+### Dependencies
+
+To create a dynamic widget, you'll need the following dependencies:
+
+- `nostr-tools`: For creating, signing, and managing Nostr events.
+- `dotenv`: For handling environment variables.
+
+### Root Endpoint
+
+Your project should have a root endpoint that returns an HTML document. This document should include a `<head>` section with metadata about the widget.
+
+**Example: `index.js`**
 
 ```javascript
-/*
-Root endpoint, should be the start of the smart widget.
-Add more endpoints to use them in a POST type buttons for more widget heirarchy.
-*/
-router.post("/", async (req, res) => {
-  try {
-    /*
-      Initialize a Smart Widget instance, a relays URL list is optional.
-      Make sure to add your secret key in the .env file under the key of SECRET_KEY to ensure all widgets are signed under the same key.
-    */
-    let SMART_WIDGET = new SW();
+import express from 'express';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-    /*
-     Smart widget components (Image, Input, Button).
-     */
-    let SWImage = new Image(
-      "https://yakihonne.s3.ap-east-1.amazonaws.com/sw-v2/dad-jokes.png"
-    );
-    let SWButton = new Button(
-      1,
-      "Give me a joke 😁",
-      "post",
-      getMainURL() + "/joke"
-    );
+const app = express();
+const port = 3000;
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
-    /*
-    Smart widget component set, it accepts one image, one optional input, and a max of 6 buttons ordered respectively from 1 to 6.
-    */
-    let SWComp = new SWComponentsSet([SWImage, SWButton]);
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>My First Smart Widget</title>
+        <meta name="description" content="A simple smart widget.">
+        <meta name="image" content="https://placehold.co/800x400.png">
+        <meta name="render" content="iframe">
+        <meta name="params" content="{}">
+      </head>
+      <body>
+        <h1>Hello from my Smart Widget!</h1>
+      </body>
+    </html>
+  `);
+});
 
-    /*
-    An optional static Smart widget event identifier, but highly recommended on the root Smart widget.
-    Make sure to use a unique string.
-    */
-    let identifier = "a99a8857ce9ca5a4237";
-
-    /*
-    To sign a Smart widget event, skip this step if wanting to publish the event.
-    */
-    let signedEvent = await SMART_WIDGET.signEvent(
-      SWComp,
-      "Funny jokes",
-      identifier
-    );
-
-    /*
-    To publish a Smart widget event, skip this step if not wanting to publish the event.
-    For a best practice, make sure to publish only the root widget.
-    the init() method is required before publishing the Smart widget.
-    */
-    let publishedEvent;
-    if (process.env.NODE_ENV === "production")
-      publishedEvent = await SMART_WIDGET.publish(SWComp, "Funny jokes", identifier);
-
-     /*
-    Always return a valid Smart widget event.
-    */
-    res.send(publishedEvent ? publishedEvent.event : signedEvent.event);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send({ message: "Server error" });
-  }
+app.listen(port, () => {
+  console.log(\`Server is running on port \${port}\`);
 });
 ```
-## General
-- All endpoints should always return a valid smart widget event
-- All endpoints except for the starting endpoint should not be published for fast response and avoid unnecessary event publishing
 
-# Action/Tool widgets
-This guide explains how to build mini web applications that can be converted into Nostr smart widgets using the smart-widget-handler package.
+### Signing and Publishing
 
-## Overview
-Smart Widget Mini Apps are lightweight web applications that extend functionality within Nostr clients. They run in their own context but can communicate with the host Nostr client to provide seamless integration.
+To publish your widget, you need to create a Nostr event with `kind: 31234`. This event includes tags that define the widget's properties, such as its name, URL, and rendering type.
 
-## Types of Mini Apps
-Nostr clients recognize two types of mini apps:
+**Example: `publish.js`**
 
-### Action Mini Apps
-- **Purpose**: Perform actions with data from the Nostr client
-- **Data flow**: One-way (client → mini app)
-- **Use case**: Mini games, formatting tools
+```javascript
+import "dotenv/config";
+import { finishEvent, getPublicKey,nip19 } from "nostr-tools";
 
-### Tool Mini Apps
-- **Purpose**: Process data and return results to the Nostr client
-- **Data flow**: Two-way (client ↔ mini app)
-- **Use case**: Text generators, data analysis, content lookup
+const relay = "wss://relay.current.fyi";
+const privateKey = process.env.PRIVATE_KEY;
 
-**Note**: The distinction between Action and Tool is primarily to help Nostr clients handle the widget's UI and data flow appropriately and to provide the necessary UX for each type.
+async function signAndPublish(widgetEvent) {
+  widgetEvent.pubkey = getPublicKey(privateKey);
+  const signedEvent = finishEvent(widgetEvent, privateKey);
 
-## Quick Start
-Create a new project:
-```bash
-mkdir my-nostr-widget
-cd my-nostr-widget
-npm init -y
-npm install react react-dom smart-widget-handler
-npm install -D vite @vitejs/plugin-react
+  const ws = new WebSocket(relay);
+  ws.onopen = () => {
+    console.log("WebSocket connected");
+    ws.send(JSON.stringify(["EVENT", signedEvent]));
+    console.log("Published event:", signedEvent);
+    ws.close();
+  };
+  ws.onerror = (err) => {
+    console.error("WebSocket error:", err);
+  };
+}
+
+const widget = {
+  kind: 31234,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [
+    ["d", "my-first-widget"],
+    ["url", "http://localhost:3000"],
+    ["name", "My First Smart Widget"],
+    ["description", "A simple smart widget."],
+    ["image", "https://placehold.co/800x400.png"],
+    ["render", "iframe"],
+    ["params", "{}"],
+  ],
+  content: "",
+};
+
+signAndPublish(widget);
 ```
-Create a basic structure:
-```
-my-nostr-widget/
-├── public/
-│   └── .well-known/
-│       └── widget.json
-├── src/
-│   ├── App.jsx
-│   └── main.jsx
-└── package.json
-```
-## Integration with Host App
-The `smart-widget-handler` package provides a bridge for communication between your mini app and the host application.
 
-### Installation
-If not installed:
+## Action and Tool Mini Apps (Using a Manifest)
+
+Action and Tool Mini Apps are lightweight web applications that integrate with a host Nostr client. They are defined by a `widget.json` manifest file.
+
+### Manifest File
+
+The `widget.json` file describes your mini app's properties.
+
+**Example: `.well-known/widget.json`**
+
+```json
+{
+  "name": "MyMiniApp",
+  "content": "https://your-mini-app-url.com",
+  "picture": "https://placehold.co/200x200.png",
+  "about": "A mini app for demonstrating actions and tools.",
+  "type": "tool",
+  "tags": ["miniapp", "example", "tool"]
+}
+```
+
+### Communication with Host App
+
+Use the `smart-widget-handler` package to facilitate communication between your mini app and the host client.
+
+**Installation:**
 ```bash
 npm install smart-widget-handler
 ```
-### Basic Usage
-```javascript
-import SWhandler from "smart-widget-handler";
 
-// Initialize communication with host app
-useEffect(() => {
-  SWhandler.client.ready();
-}, []);
+### Action Mini Apps
 
-// Listen for messages from host app
-useEffect(() => {
-  let listener = SWhandler.client.listen((event) => {
-    if (event.kind === "user-metadata") {
-      // Handle user metadata
-      setUserMetadata(event.data?.user);
-      setHostOrigin(event.data?.host_origin);
-    }
-    if (event.kind === "err-msg") {
-      // Handle error messages
-      setErrorMessage(event.data);
-    }
-    if (event.kind === "nostr-event") {
-      // Handle Nostr events
-      const { pubkey, id } = event.data?.event || {};
-      // Process event data
-    }
-  });
-
-  return () => {
-    // Clean up listener when component unmounts
-    listener?.close();
-  }
-}, []);
-```
-
-## Action Mini Apps vs. Tool Mini Apps
-
-### Action Mini Apps. Example
 Action mini apps can only receive data from the host application. They are ideal for widgets that perform a specific action without needing to return data.
 
-Example:
+**Example:**
 ```javascript
 // In an Action Mini App
 import SWhandler from "smart-widget-handler";
@@ -213,10 +167,11 @@ function ActionApp() {
 }
 ```
 
-### Tool Mini Apps. Example
+### Tool Mini Apps
+
 Tool mini apps can both receive data from and return data to the host application. This makes them suitable for widgets that need to provide information back to the host app.
 
-Example:
+**Example:**
 ```javascript
 // In a Tool Mini App
 import SWhandler from "smart-widget-handler";
@@ -262,8 +217,10 @@ function ToolApp() {
 }
 ```
 
-## Publishing Nostr Events
+### Publishing Nostr Events
+
 Mini apps can request the host application to sign and publish Nostr events:
+
 ```javascript
 const signEvent = (tempEvent) => {
   if (hostOrigin) {
@@ -282,56 +239,3 @@ const publishNote = () => {
   signEvent(eventTemplate);
 };
 ```
-
-## Widget Manifest
-To make your mini app discoverable as a widget, you need to create a manifest file at `/.well-known/widget.json`:
-```json
-{
-  "pubkey": "your-nostr-pubkey-in-hex",
-  "widget": {
-    "title": "My Amazing Widget",
-    "appUrl": "https://your-app-url.com",
-    "iconUrl": "https://your-app-url.com/icon.png",
-    "imageUrl": "https://your-app-url.com/thumbnail.png",
-    "buttonTitle": "Launch Widget",
-    "tags": ["tool", "utility", "nostr"]
-  }
-}
-```
-This manifest serves two important purposes:
-1.  Verifies the authenticity of your mini app
-2.  Provides metadata for Nostr clients to display your widget
-
-## Deployment and Publication Workflow
-1.  **Build your mini app**
-2.  **Deploy to a hosting service**
-    -   Vercel, Netlify, GitHub Pages, etc.
-    -   Ensure the `/.well-known/widget.json` file is accessible
-3.  **Register with YakiHonne Widget Editor**
-    -   Go to the YakiHonne Widget Editor
-    -   Select Action or Tool based on your mini app type
-    -   Enter your mini app URL
-    -   The editor will fetch your manifest and validate it
-    -   Configure any additional settings
-4.  **Publish to Nostr**
-
-## Benefits of Mini Apps
-- **Web3/Web2/Nostr Integration**: Create apps that bridge different ecosystems
-- **FOSS Projects**: Leverage open-source libraries and frameworks
-- **Customizability**: Build widgets to suit specific needs
-- **Discoverability**: Widget manifest makes your mini apps discoverable
-
-## Common Use Cases
-### Action Mini Apps
-- Note composers with special formatting
-- Media uploaders
-- Event creators
-- NFT minters
-- Payment widgets
-
-### Tool Mini Apps
-- Analytics providers
-- Search tools
-- Data aggregators
-- Content recommendation engines
-- Information lookup services
