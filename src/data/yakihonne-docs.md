@@ -291,4 +291,251 @@ router.post("/", async (req, res) => {
 ### 6.4. General Notes
 - All endpoints should always return a valid smart widget event.
 - All endpoints except for the starting endpoint should not be published for fast response and to avoid unnecessary event publishing.
+
+## 7. Action/Tool Widgets
+This guide explains how to build mini web applications that can be converted into Nostr smart widgets using the smart-widget-handler package.
+
+### Overview
+Smart Widget Mini Apps are lightweight web applications that extend functionality within Nostr clients. They run in their own context but can communicate with the host Nostr client to provide seamless integration.
+
+### Types of Mini Apps
+Nostr clients recognize two types of mini apps:
+
+#### Action Mini Apps
+- **Purpose**: Perform actions with data from the Nostr client
+- **Data flow**: One-way (client → mini app)
+- **Use case**: Mini games, formatting tools
+
+#### Tool Mini Apps
+- **Purpose**: Process data and return results to the Nostr client
+- **Data flow**: Two-way (client ↔ mini app)
+- **Use case**: Text generators, data analysis, content lookup
+
+**Note**: The distinction between Action and Tool is primarily to help Nostr clients handle the widget's UI and data flow appropriately and to provide the necessary UX for each type.
+
+### Quick Start
+Create a new project:
+```bash
+mkdir my-nostr-widget
+cd my-nostr-widget
+npm init -y
+npm install react react-dom smart-widget-handler
+npm install -D vite @vitejs/plugin-react
+```
+Create a basic structure:
+```
+my-nostr-widget/
+├── public/
+│   └── .well-known/
+│       └── widget.json
+├── src/
+│   ├── App.jsx
+│   └── main.jsx
+└── package.json
+```
+### Integration with Host App
+The `smart-widget-handler` package provides a bridge for communication between your mini app and the host application.
+
+#### Installation
+If not installed:
+```bash
+npm install smart-widget-handler
+```
+#### Basic Usage
+```javascript
+import SWhandler from "smart-widget-handler";
+
+// Initialize communication with host app
+useEffect(() => {
+  SWhandler.client.ready();
+}, []);
+
+// Listen for messages from host app
+useEffect(() => {
+  let listener = SWhandler.client.listen((event) => {
+    if (event.kind === "user-metadata") {
+      // Handle user metadata
+      setUserMetadata(event.data?.user);
+      setHostOrigin(event.data?.host_origin);
+    }
+    if (event.kind === "err-msg") {
+      // Handle error messages
+      setErrorMessage(event.data);
+    }
+    if (event.kind === "nostr-event") {
+      // Handle Nostr events
+      const { pubkey, id } = event.data?.event || {};
+      // Process event data
+    }
+  });
+
+  return () => {
+    // Clean up listener when component unmounts
+    listener?.close();
+  }
+}, []);
+```
+
+### Action Mini Apps vs. Tool Mini Apps
+
+#### Action Mini Apps
+Action mini apps can only receive data from the host application. They are ideal for widgets that perform a specific action without needing to return data.
+
+**Example:**
+```javascript
+// In an Action Mini App
+import SWhandler from "smart-widget-handler";
+
+function ActionApp() {
+  const [userMetadata, setUserMetadata] = useState(null);
+  
+  useEffect(() => {
+    SWhandler.client.ready();
+    
+    const listener = SWhandler.client.listen((event) => {
+      if (event.kind === "user-metadata") {
+        setUserMetadata(event.data?.user);
+      }
+    });
+    
+    return () => listener?.close();
+  }, []);
+  
+  return (
+    <div>
+      {userMetadata ? (
+        <div>
+          <h1>Hello, {userMetadata.display_name || userMetadata.name}</h1>
+          <button onClick={performAction}>Perform Action</button>
+        </div>
+      ) : (
+        <div>Loading user data...</div>
+      )}
+    </div>
+  );
+}
+```
+
+#### Tool Mini Apps
+Tool mini apps can both receive data from and return data to the host application. This makes them suitable for widgets that need to provide information back to the host app.
+
+**Example:**
+```javascript
+// In a Tool Mini App
+import SWhandler from "smart-widget-handler";
+
+function ToolApp() {
+  const [userMetadata, setUserMetadata] = useState(null);
+  const [hostOrigin, setHostOrigin] = useState(null);
+  
+  useEffect(() => {
+    SWhandler.client.ready();
+    
+    const listener = SWhandler.client.listen((event) => {
+      if (event.kind === "user-metadata") {
+        setUserMetadata(event.data?.user);
+        setHostOrigin(event.data?.host_origin);
+      }
+    });
+    
+    return () => listener?.close();
+  }, []);
+  
+  const sendDataToHost = (data) => {
+    if (hostOrigin) {
+      // Send context data back to the host app
+      SWhandler.client.sendContext(data, hostOrigin);
+    }
+  };
+  
+  return (
+    <div>
+      {userMetadata ? (
+        <div>
+          <h1>Hello, {userMetadata.display_name || userMetadata.name}</h1>
+          <button onClick={() => sendDataToHost("This is data from the tool mini app")}>
+            Send Data to Host
+          </button>
+        </div>
+      ) : (
+        <div>Loading user data...</div>
+      )}
+    </div>
+  );
+}
+```
+
+### Publishing Nostr Events
+Mini apps can request the host application to sign and publish Nostr events:
+```javascript
+const signEvent = (tempEvent) => {
+  if (hostOrigin) {
+    SWhandler.client.requestEventPublish(tempEvent, hostOrigin);
+  }
+};
+
+// Example of creating and publishing a simple note
+const publishNote = () => {
+  const eventTemplate = {
+    kind: 1, // Regular note
+    content: "Hello from my mini app!",
+    tags: [["t", "miniapp"], ["t", "test"]]
+  };
+  
+  signEvent(eventTemplate);
+};
+```
+
+### Widget Manifest
+To make your mini app discoverable as a widget, you need to create a manifest file at `/.well-known/widget.json`:
+```json
+{
+  "pubkey": "your-nostr-pubkey-in-hex",
+  "widget": {
+    "title": "My Amazing Widget",
+    "appUrl": "https://your-app-url.com",
+    "iconUrl": "https://your-app-url.com/icon.png",
+    "imageUrl": "https://your-app-url.com/thumbnail.png",
+    "buttonTitle": "Launch Widget",
+    "tags": ["tool", "utility", "nostr"]
+  }
+}
+```
+This manifest serves two important purposes:
+1.  Verifies the authenticity of your mini app
+2.  Provides metadata for Nostr clients to display your widget
+
+### Deployment and Publication Workflow
+1.  **Build your mini app**
+2.  **Deploy to a hosting service**
+    -   Vercel, Netlify, GitHub Pages, etc.
+    -   Ensure the `/.well-known/widget.json` file is accessible
+3.  **Register with YakiHonne Widget Editor**
+    -   Go to the YakiHonne Widget Editor
+    -   Select Action or Tool based on your mini app type
+    -   Enter your mini app URL
+    -   The editor will fetch your manifest and validate it
+    -   Configure any additional settings
+4.  **Publish to Nostr**
+
+### Benefits of Mini Apps
+- **Web3/Web2/Nostr Integration**: Create apps that bridge different ecosystems
+- **FOSS Projects**: Leverage open-source libraries and frameworks
+- **Customizability**: Build widgets to suit specific needs
+- **Discoverability**: Widget manifest makes your mini apps discoverable
+
+### Common Use Cases
+#### Action Mini Apps
+- Note composers with special formatting
+- Media uploaders
+- Event creators
+- NFT minters
+- Payment widgets
+
+#### Tool Mini Apps
+- Analytics providers
+- Search tools
+- Data aggregators
+- Content recommendation engines
+- Information lookup services
 ```
