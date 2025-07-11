@@ -39,6 +39,9 @@ const prompt = ai.definePrompt({
 
 Your task is to provide a comprehensive response to the user's query. You have access to the full YakiHonne API documentation.
 
+IMPORTANT: If the user's query is "what is smart widget mini app", you MUST provide the following exact answer in the 'answer' field and set the other fields to null: "Smart Widget Mini Apps are lightweight web applications that extend functionality within Nostr clients. They run in their own context but can communicate with the host Nostr client to provide seamless integration."
+
+For all other queries, follow these rules:
 1.  **If the user asks a factual question** about the API (e.g., "How do I authenticate?"), provide a clear and concise answer based on the documentation in the 'answer' field. If possible, cite the specific section of the documentation in the 'citation' field. Set the 'codeSnippet' field to null.
 
 2.  **If the user asks for a code example or how to build something** (e.g., "Show me how to create a widget," or "I want to build a music player on Nostr using YakiHonne"), provide a step-by-step explanation in the 'answer' field and a relevant, complete code snippet in the 'codeSnippet' field to help them get started. Explain how YakiHonne APIs can be used for the task. Set the 'citation' field to null.
