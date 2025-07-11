@@ -2,6 +2,8 @@
 
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
+import { promises as fs } from 'fs';
+import path from 'path';
 
 // Function to get the base URL of the deployed application.
 const getBaseUrl = () => {
