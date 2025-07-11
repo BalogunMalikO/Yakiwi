@@ -142,6 +142,16 @@ export function QAPanel() {
       }
     });
   }
+  
+  const handleExampleClick = (question: string) => {
+    form.setValue("question", question);
+    form.handleSubmit(onSubmit)();
+  };
+
+  const examplePrompts = [
+    "How do I build a smart widget that tells jokes?",
+    "What's the difference between an Action and a Tool mini app?",
+  ];
 
   return (
     <div className="space-y-6">
@@ -156,7 +166,7 @@ export function QAPanel() {
                   <FormItem>
                     <FormControl>
                       <Textarea
-                        placeholder="e.g., How do I authenticate? or, Show me how to build a music player..."
+                        placeholder="Ask a question about the YakiHonne API..."
                         className="resize-none border-0 p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         rows={3}
                         {...field}
@@ -166,8 +176,24 @@ export function QAPanel() {
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isPending} size="lg">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium">Try an example:</span>
+                  <div className="flex flex-wrap gap-x-4">
+                    {examplePrompts.map((prompt, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => handleExampleClick(prompt)}
+                        className="text-left text-primary underline-offset-4 hover:underline"
+                        disabled={isPending}
+                      >
+                       &ldquo;{prompt}&rdquo;
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Button type="submit" disabled={isPending} size="lg" className="self-end ml-auto">
                   {isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
