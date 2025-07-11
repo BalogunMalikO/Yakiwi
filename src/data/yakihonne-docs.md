@@ -175,10 +175,10 @@ useEffect(() => {
 
 ## Action Mini Apps vs. Tool Mini Apps
 
-### Action Mini Apps
+### Action Mini Apps. Example
 Action mini apps can only receive data from the host application. They are ideal for widgets that perform a specific action without needing to return data.
 
-**Example:**
+Example:
 ```javascript
 // In an Action Mini App
 import SWhandler from "smart-widget-handler";
@@ -213,10 +213,10 @@ function ActionApp() {
 }
 ```
 
-### Tool Mini Apps
+### Tool Mini Apps. Example
 Tool mini apps can both receive data from and return data to the host application. This makes them suitable for widgets that need to provide information back to the host app.
 
-**Example:**
+Example:
 ```javascript
 // In a Tool Mini App
 import SWhandler from "smart-widget-handler";
