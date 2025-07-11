@@ -2,9 +2,9 @@
   "pubkey": "",
   "widget": {
     "title": "YaKiwi",
-    "appUrl": "https://<your-app-url.com>",
-    "iconUrl": "https://<your-app-url.com>/sparkles-icon.png",
-    "imageUrl": "https://<your-app-url.com>/yakiwi-card.png",
+    "appUrl": "https://yakiwi.vercel.app/",
+    "iconUrl": "https://yakiwi.vercel.app/sparkles-icon.png",
+    "imageUrl": "https://yakiwi.vercel.app/yakiwi-card.png",
     "buttonTitle": "Ask YaKiwi",
     "tags": ["tool", "ai", "docs", "yakihonne"]
   }
