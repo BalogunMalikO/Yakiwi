@@ -2,29 +2,13 @@
 
 import { generateDeveloperResponse } from "@/ai/flows/generate-example-code";
 import type { DeveloperResponseOutput } from "@/ai/flows/generate-example-code";
-import fs from 'fs/promises';
-import path from 'path';
-
-// Function to fetch the documentation. It's cached for performance.
-const getDocs = async () => {
-    const docPath = path.join(process.cwd(), 'src/data', 'yakihonne-docs.md');
-    try {
-        const data = await fs.readFile(docPath, 'utf-8');
-        return data;
-    } catch (error) {
-        console.error('Error reading documentation file:', error);
-        throw new Error('Failed to fetch documentation.');
-    }
-};
-
+import { YAKIHONNE_API_DOCS } from "@/data/docs";
 
 export async function askQuestionAction(question: string): Promise<DeveloperResponseOutput & { error?: string }> {
   try {
     if (!question) {
       return { error: "Question cannot be empty.", answer: "", codeSnippet: null, citation: null };
     }
-    
-    const YAKIHONNE_API_DOCS = await getDocs();
 
     const result = await generateDeveloperResponse({
       query: question,
