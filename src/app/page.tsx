@@ -4,6 +4,7 @@ import { QAPanel } from "@/components/qa-panel";
 import { Sparkles } from "lucide-react";
 import SWhandler from "smart-widget-handler";
 import * as React from "react";
+import Link from "next/link";
 
 export default function Home() {
   const [initialQuestion, setInitialQuestion] = React.useState<string | undefined>();
@@ -65,7 +66,17 @@ export default function Home() {
         />
       </div>
       <footer className="mt-8 text-center text-sm text-muted-foreground">
-        <p>Powered by GenAI</p>
+        <p>
+            Built by{' '}
+            <Link
+              href="https://x.com/@malkrite"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              @malkrite
+            </Link>
+          </p>
       </footer>
     </main>
   );
