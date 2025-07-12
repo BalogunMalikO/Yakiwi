@@ -1,3 +1,4 @@
+
 "use client";
 
 import { QAPanel } from "@/components/qa-panel";
@@ -72,7 +73,7 @@ export default function Home() {
               href="https://x.com/@malkrite"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline-offset-4 hover:underline"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
             >
               @malkrite
             </Link>
