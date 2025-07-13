@@ -89,7 +89,8 @@ const generateDeveloperResponseFlow = ai.defineFlow(
   async (input) => {
     const llmResponse = await prompt(input);
     
-    const toolRequest = llmResponse.toolRequest('shouldGenerateWidget');
+    const choice = llmResponse.choices[0];
+    const toolRequest = choice.toolRequest('shouldGenerateWidget');
 
     if (toolRequest) {
       // User wants to build a widget. Delegate to the widget generation flow.
@@ -102,7 +103,7 @@ const generateDeveloperResponseFlow = ai.defineFlow(
       };
     } else {
       // This is a standard Q&A or simple code example request.
-      const output = llmResponse.output();
+      const output = choice.output();
       if (!output) {
         throw new Error("Flow failed to produce output.");
       }
