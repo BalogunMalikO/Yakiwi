@@ -318,9 +318,9 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
             )}
           </CardContent>
           <CardFooter>
-            <div className="w-full flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="w-full flex flex-col items-start gap-4">
               {response.citation && (
-                <div className="flex-1">
+                <div className="w-full">
                   <p className="text-sm font-medium text-muted-foreground mb-2">Citation</p>
                   <blockquote className="border-l-2 border-border pl-4 italic text-muted-foreground">
                     <Quote className="h-4 w-4 inline-block mr-2 -mt-1" />
@@ -328,12 +328,11 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
                   </blockquote>
                 </div>
               )}
-              <div className="flex-1 flex justify-end gap-2">
+              <div className="flex w-full justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleShareOnNostr}
-                  className="sm:ml-auto"
                   disabled={nostrPending || publishPending}
                 >
                   {nostrPending ? (
