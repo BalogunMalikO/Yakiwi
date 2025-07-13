@@ -246,19 +246,19 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
                   </FormItem>
                 )}
               />
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">Try an example:</span>
-                  <div className="flex flex-wrap gap-x-4">
+              <div className="flex flex-col gap-4">
+                <div className="space-y-2">
+                   <p className="text-sm font-medium text-muted-foreground">Or try an example:</p>
+                  <div className="flex flex-wrap gap-2">
                     {examplePrompts.map((prompt, i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => handleExampleClick(prompt)}
-                        className="text-left text-primary underline-offset-4 hover:underline"
+                        className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
                         disabled={isPending}
                       >
-                       &ldquo;{prompt}&rdquo;
+                       {prompt}
                       </button>
                     ))}
                   </div>
