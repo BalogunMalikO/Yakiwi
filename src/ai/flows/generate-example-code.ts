@@ -1,11 +1,11 @@
 'use server';
 
 /**
- * @fileOverview This file defines a Genkit flow for generating a comprehensive developer response,
- * which can include answers to questions, code examples, and citations from documentation.
- * It also acts as a router to delegate widget generation requests.
+ * @fileOverview This file defines the main Genkit flow that acts as a router.
+ * It determines if a user wants to ask a question or build a widget and
+ * delegates the request to the appropriate specialized flow.
  *
- * - generateDeveloperResponse - A function that can answer questions and generate code.
+ * - generateDeveloperResponse - The main function that routes user requests.
  * - DeveloperResponseInput - The input type for the function.
  * - DeveloperResponseOutput - The return type for the function.
  */
@@ -13,6 +13,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { generateWidgetCode, type WidgetCode } from './generate-widget-code';
+import { answerQuestionFromDocs } from './answer-question-from-docs';
 
 
 const DeveloperResponseInputSchema = z.object({
@@ -40,45 +41,15 @@ export async function generateDeveloperResponse(
   return generateDeveloperResponseFlow(input);
 }
 
-const shouldGenerateWidgetTool = ai.defineTool(
-  {
-    name: 'shouldGenerateWidget',
-    description: 'Use this tool to determine if the user wants to build or create a smart widget.',
-    inputSchema: z.object({
-      query: z.string(),
-    }),
-    outputSchema: z.boolean(),
-  },
-  async () => {
-    // This is a passthrough tool. The model's decision to use it is what matters.
-    // The actual widget generation will happen in the main flow.
-    return true;
-  }
-);
+const decisionPrompt = ai.definePrompt({
+    name: 'widgetOrQuestionDecision',
+    input: { schema: z.object({ query: z.string() }) },
+    output: { schema: z.object({ isWidgetRequest: z.boolean().describe('Set to true if the user wants to build, create, or make a widget. Otherwise, set to false.') }) },
+    prompt: `Analyze the user's query and determine if they are asking to build, create, or make a widget.
 
-
-const prompt = ai.definePrompt({
-  name: 'generateDeveloperResponsePrompt',
-  input: {schema: DeveloperResponseInputSchema},
-  output: {schema: DeveloperResponseOutputSchema},
-  tools: [shouldGenerateWidgetTool],
-  prompt: `You are an expert software developer and AI assistant specializing in the YakiHonne API and its integration with technologies like Nostr.
-
-Your task is to provide a comprehensive response to the user's query. You have access to the full YakiHonne API documentation.
-
-Your primary decision is whether the user is asking a question OR asking to build/create a smart widget.
-
-1.  **If the user asks to build, create, or make a smart widget** (e.g., "build a widget that zaps users"), call the 'shouldGenerateWidget' tool. DO NOT answer the question directly. The main flow will handle the widget generation.
-2.  **If the user asks a factual question** about the API (e.g., "How do I authenticate?"), provide a clear and concise answer based on the documentation in the 'answer' field. If possible, cite the specific section of the documentation in the 'citation' field. Set the 'codeSnippet' and 'widgetCode' fields to null.
-3.  **If the user asks for a simple code example or how to do something that is NOT a full widget** (e.g., "Show me how to send a Nostr event"), provide a step-by-step explanation in the 'answer' field and a relevant, complete code snippet in the 'codeSnippet' field. Set the 'citation' and 'widgetCode' fields to null.
-
-Always provide a helpful and encouraging response.
-
-User Query: {{{query}}}
-
-Full API Documentation for context:
-{{{documentation}}}`,
+    User Query: {{{query}}}`,
 });
+
 
 const generateDeveloperResponseFlow = ai.defineFlow(
   {
@@ -87,16 +58,11 @@ const generateDeveloperResponseFlow = ai.defineFlow(
     outputSchema: DeveloperResponseOutputSchema,
   },
   async (input) => {
-    const llmResponse = await prompt(input);
-    
-    if (!llmResponse.choices || llmResponse.choices.length === 0) {
-      throw new Error("The model did not return any choices.");
-    }
+    // First, ask a simple, targeted model to decide if it's a widget request.
+    const decision = await decisionPrompt({ query: input.query });
+    const isWidgetRequest = decision.output?.isWidgetRequest ?? false;
 
-    const choice = llmResponse.choices[0];
-    const toolRequest = choice.toolRequest('shouldGenerateWidget');
-
-    if (toolRequest) {
+    if (isWidgetRequest) {
       // User wants to build a widget. Delegate to the widget generation flow.
       const widget = await generateWidgetCode({ prompt: input.query });
       return {
@@ -106,13 +72,13 @@ const generateDeveloperResponseFlow = ai.defineFlow(
         widgetCode: widget,
       };
     } else {
-      // This is a standard Q&A or simple code example request.
-      const output = choice.output();
-      if (!output) {
-        throw new Error("Flow failed to produce output.");
-      }
+      // It's a question. Delegate to the Q&A flow.
+      const qaResult = await answerQuestionFromDocs({
+        question: input.query,
+        documentation: input.documentation,
+      });
       return {
-        ...output,
+        ...qaResult,
         widgetCode: null, // Ensure widgetCode is null for non-widget responses
       };
     }

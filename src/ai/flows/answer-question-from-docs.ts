@@ -18,6 +18,7 @@ export type AnswerQuestionFromDocsInput = z.infer<typeof AnswerQuestionFromDocsI
 
 const AnswerQuestionFromDocsOutputSchema = z.object({
   answer: z.string().describe('The answer to the question, based on the documentation.'),
+  codeSnippet: z.string().nullable().describe('An optional code snippet if the question asks for an example.'),
   citation: z.string().optional().describe('The relevant documentation cited, if any.'),
 });
 export type AnswerQuestionFromDocsOutput = z.infer<typeof AnswerQuestionFromDocsOutputSchema>;
@@ -30,14 +31,16 @@ const prompt = ai.definePrompt({
   name: 'answerQuestionFromDocsPrompt',
   input: {schema: AnswerQuestionFromDocsInputSchema},
   output: {schema: AnswerQuestionFromDocsOutputSchema},
-  prompt: `You are an AI assistant that answers questions based on provided documentation.
+  prompt: `You are an expert software developer and AI assistant specializing in the YakiHonne API. Your task is to provide a comprehensive response to the user's query based on the provided documentation.
 
-  Question: {{{question}}}
+  - If the user asks a factual question (e.g., "What is a Tool Widget?"), provide a clear answer in the 'answer' field and a relevant 'citation' from the documentation. 'codeSnippet' should be null.
+  - If the user asks for a simple code example (e.g., "Show me how to send a Nostr event"), provide an explanation in the 'answer' field and a complete code snippet in the 'codeSnippet' field.
+  - If the documentation does not contain the answer, respond that the answer is not in the documentation.
 
-  Documentation: {{{documentation}}}
+  User Query: {{{question}}}
 
-  Answer the question using only the information in the documentation. Cite the specific section of the documentation used to answer the question, if possible.
-  If the documentation does not contain the answer to the question, respond that the answer is not in the documentation.
+  Full API Documentation for context:
+  {{{documentation}}}
   `,
 });
 
