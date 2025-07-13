@@ -312,7 +312,7 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
                 <h4 className="font-semibold text-lg mb-2">
                   {response.widgetCode ? "Widget Code" : "Example Code"}
                 </h4>
-                <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm font-code whitespace-pre-wrap">
+                <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-code whitespace-pre-wrap leading-relaxed">
                   <code>{response.codeSnippet}</code>
                 </pre>
               </div>
