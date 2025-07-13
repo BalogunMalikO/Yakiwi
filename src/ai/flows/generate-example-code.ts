@@ -89,6 +89,10 @@ const generateDeveloperResponseFlow = ai.defineFlow(
   async (input) => {
     const llmResponse = await prompt(input);
     
+    if (!llmResponse.choices || llmResponse.choices.length === 0) {
+      throw new Error("The model did not return any choices.");
+    }
+
     const choice = llmResponse.choices[0];
     const toolRequest = choice.toolRequest('shouldGenerateWidget');
 
