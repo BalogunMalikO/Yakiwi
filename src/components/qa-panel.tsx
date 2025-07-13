@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Loader2, Quote, Send, Sparkles } from "lucide-react";
+import { Loader2, Quote, Send, Sparkles, UploadCloud } from "lucide-react";
 import { SimplePool } from "nostr-tools";
 
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
   const [response, setResponse] = React.useState<DeveloperResponseOutput | null>(null);
   const [isPending, startTransition] = React.useTransition();
   const [nostrPending, setNostrPending] = React.useState(false);
+  const [publishPending, setPublishPending] = React.useState(false);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -94,7 +95,7 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
       const relays = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
       
       let content = `Q: ${form.getValues("question")}\n\nA: ${response.answer}`;
-      if (response.codeSnippet) {
+      if (response.codeSnippet && !response.widgetCode) { // Only add if not a widget
         content += `\n\n\`\`\`\n${response.codeSnippet}\n\`\`\``;
       }
       if (response.citation) {
@@ -139,6 +140,59 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
     }
   };
 
+  const handlePublishWidget = async () => {
+    if (!response?.widgetCode) return;
+    if (!window.nostr) {
+      toast({
+        variant: "destructive",
+        title: "Nostr extension not found",
+        description: "Please install a Nostr browser extension like Alby or nos2x.",
+      });
+      return;
+    }
+
+    setPublishPending(true);
+    const { widgetName, htmlCode, widgetKind } = response.widgetCode;
+
+    try {
+      const dataUri = `data:text/html;charset=utf-8,${encodeURIComponent(htmlCode)}`;
+      const relays = ["wss://relay.damus.io", "wss://relay.primal.net", "wss://nos.lol"];
+      
+      const eventTemplate = {
+        kind: widgetKind,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["d", widgetName],
+          ["url", dataUri],
+          ["image", "https://yakihonne.com/favicon.ico"] // Generic icon for now
+        ],
+        content: `Widget: ${widgetName}`,
+      };
+
+      const signedEvent = await window.nostr.signEvent(eventTemplate);
+
+      const pool = new SimplePool();
+      const pubs = pool.publish(relays, signedEvent);
+      await Promise.any(pubs.map(p => new Promise(r => p.on('ok', r))));
+      pool.close(relays);
+
+      toast({
+        title: "Widget Published!",
+        description: `${widgetName} is now available on Nostr.`,
+      });
+
+    } catch (e: any) {
+       console.error("Widget publishing failed", e);
+      toast({
+        variant: "destructive",
+        title: "Failed to publish widget",
+        description: e.message || "An unknown error occurred.",
+      });
+    } finally {
+      setPublishPending(false);
+    }
+  }
+
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setResponse(null);
     startTransition(async () => {
@@ -165,6 +219,7 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
   const examplePrompts = [
     "How do I build a smart widget that tells jokes?",
     "What's the difference between an Action and a Tool mini app?",
+    "Build a widget that generates a UUID",
   ];
 
   return (
@@ -180,7 +235,7 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
                   <FormItem>
                     <FormControl>
                       <Textarea
-                        placeholder="Ask a question about the YakiHonne API..."
+                        placeholder="Ask a question or describe a widget to build..."
                         className="resize-none border-0 p-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         rows={3}
                         {...field}
@@ -246,14 +301,16 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline">
               <Sparkles className="h-5 w-5 text-accent" />
-              Answer
+              {response.widgetCode ? "Generated Widget" : "Answer"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="leading-relaxed whitespace-pre-wrap">{response.answer}</p>
             {response.codeSnippet && (
               <div className="mt-6">
-                <h4 className="font-semibold text-lg mb-2">Example Code</h4>
+                <h4 className="font-semibold text-lg mb-2">
+                  {response.widgetCode ? "Widget Code" : "Example Code"}
+                </h4>
                 <div className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
                   <pre><code className="font-code">{response.codeSnippet}</code></pre>
                 </div>
@@ -271,25 +328,46 @@ export function QAPanel({ initialQuestion, onApiResponse }: QAPanelProps) {
                   </blockquote>
                 </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShareOnNostr}
-                className="sm:ml-auto"
-                disabled={nostrPending}
-              >
-                {nostrPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sharing...
-                  </>
-                ) : (
-                  <>
-                    <NostrIcon className="h-4 w-4 mr-2" />
-                    Share on Nostr
-                  </>
+              <div className="flex-1 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShareOnNostr}
+                  className="sm:ml-auto"
+                  disabled={nostrPending || publishPending}
+                >
+                  {nostrPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sharing...
+                    </>
+                  ) : (
+                    <>
+                      <NostrIcon className="h-4 w-4 mr-2" />
+                      Share on Nostr
+                    </>
+                  )}
+                </Button>
+                {response.widgetCode && (
+                   <Button
+                    size="sm"
+                    onClick={handlePublishWidget}
+                    disabled={publishPending || nostrPending}
+                  >
+                    {publishPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="h-4 w-4 mr-2" />
+                        Publish Widget
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
           </CardFooter>
         </Card>

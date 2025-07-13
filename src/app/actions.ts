@@ -7,7 +7,7 @@ import { YAKIHONNE_API_DOCS } from "@/data/docs";
 export async function askQuestionAction(question: string): Promise<DeveloperResponseOutput & { error?: string }> {
   try {
     if (!question) {
-      return { error: "Question cannot be empty.", answer: "", codeSnippet: null, citation: null };
+      return { error: "Question cannot be empty.", answer: "", codeSnippet: null, citation: null, widgetCode: null };
     }
 
     const result = await generateDeveloperResponse({
@@ -24,6 +24,7 @@ export async function askQuestionAction(question: string): Promise<DeveloperResp
             answer: "I am unable to provide a response for this request. Please try rephrasing your query or ask about a different topic related to the YakiHonne API.",
             codeSnippet: null,
             citation: null,
+            widgetCode: null,
         };
     }
     return {
@@ -31,6 +32,7 @@ export async function askQuestionAction(question: string): Promise<DeveloperResp
       answer: "",
       codeSnippet: null,
       citation: null,
+      widgetCode: null,
     };
   }
 }
