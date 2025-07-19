@@ -1,10 +1,10 @@
 {
-  "pubkey": "",
+  "pubkey": "752f4758acc49a7666e6fe2233f6c66d5b285d5ceeac621553a8cfc86f0e04e6",
   "widget": {
     "title": "YaKiwi",
     "appUrl": "https://yakiwi.vercel.app/",
-    "iconUrl": "https://yakiwi.vercel.app/sparkles-icon.png",
-    "imageUrl": "https://yakiwi.vercel.app/yakiwi-card.png",
+    "iconUrl": "https://www.flaticon.com/free-icons/sparkle",
+    "imageUrl": "https://www.flaticon.com/free-icons/sparkle",
     "buttonTitle": "Ask YaKiwi",
     "tags": ["tool", "ai", "docs", "yakihonne"]
   }
